@@ -1,0 +1,534 @@
+diff --git a/trinetra-ai/src/features/tour/Tour.tsx b/trinetra-ai/src/features/tour/Tour.tsx
+index 08d920c..c94eae7 100644
+--- a/trinetra-ai/src/features/tour/Tour.tsx
++++ b/trinetra-ai/src/features/tour/Tour.tsx
+@@ -1,4 +1,4 @@
+-import { useEffect, useRef, useState } from 'react';
++import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+ import { useLocation, useNavigate } from 'react-router-dom';
+ import { ChevronLeft, ChevronRight, Shield, X } from 'lucide-react';
+ import { TOUR_STEPS } from './tourSteps';
+@@ -12,10 +12,77 @@ interface Rect {
+   h: number;
+ }
+ 
+-const CARD_W = 380;
+-const CARD_H_EST = 240;
+-const GAP = 16;
+-const PAD = 8;
++const GAP = 16; // spotlight → card distance
++const PAD = 8; // spotlight padding around the target
++const EDGE = 12; // minimum distance from any viewport edge
++const MIN_SIZE = 24; // smaller than this in BOTH axes means "not mounted yet"
++const GIVE_UP_MS = 8_000; // how long to wait for a late, data-driven target
++const QUERY_EVERY_MS = 80; // DOM re-query cadence while the target is missing
++const MOVE_EPS = 0.5; // px a rect must move before styles are rewritten
++/** Sticky header (h-14) + primary nav — targets must clear this much chrome. */
++const STICKY_SAFE = 110;
++
++type Phase = 'acquiring' | 'ready' | 'fallback';
++
++/** True when a keystroke belongs to a field the user is typing in. */
++function isTypingTarget(target: EventTarget | null): boolean {
++  if (!(target instanceof HTMLElement)) return false;
++  return (
++    target.isContentEditable ||
++    target.tagName === 'INPUT' ||
++    target.tagName === 'TEXTAREA' ||
++    target.tagName === 'SELECT'
++  );
++}
++
++/** Bring the spotlighted element on screen — the core of the tour fix. */
++function scrollTargetIntoView(el: Element) {
++  const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
++  try {
++    el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center', inline: 'nearest' });
++  } catch {
++    el.scrollIntoView();
++  }
++}
++
++/** Is the rect visible enough that we should NOT disturb the scroll position? */
++function isOnScreen(r: Rect, vh: number): boolean {
++  const top = r.y;
++  const bottom = r.y + r.h;
++  // Taller than the viewport: only jump when it is completely out of view.
++  if (r.h >= vh - STICKY_SAFE - EDGE) return bottom > 0 && top < vh;
++  return top >= STICKY_SAFE && bottom <= vh - EDGE;
++}
++
++function writeIfChanged(el: HTMLElement, prop: string, value: string) {
++  if (el.style.getPropertyValue(prop) !== value) el.style.setProperty(prop, value);
++}
++
++/**
++ * Place the card near the spotlight (or centred when there is none), always
++ * fully inside the viewport. Runs every frame, so the real card size is used
++ * instead of a hard-coded height estimate.
++ */
++function positionCard(card: HTMLElement, r: Rect | null) {
++  const vw = window.innerWidth;
++  const vh = window.innerHeight;
++  const cw = card.offsetWidth;
++  const ch = card.offsetHeight;
++  let left: number;
++  let top: number;
++  if (!r) {
++    left = (vw - cw) / 2;
++    top = (vh - ch) / 2;
++  } else {
++    const fitsBelow = r.y + r.h + GAP + ch <= vh - EDGE;
++    top = fitsBelow ? r.y + r.h + GAP : Math.max(EDGE, Math.min(r.y - GAP - ch, vh - ch - EDGE));
++    left = r.x + r.w / 2 - cw / 2;
++  }
++  left = Math.max(EDGE, Math.min(left, vw - cw - EDGE));
++  top = Math.max(EDGE, Math.min(top, vh - ch - EDGE));
++  writeIfChanged(card, 'left', `${Math.round(left)}px`);
++  writeIfChanged(card, 'top', `${Math.round(top)}px`);
++}
+ 
+ export function Tour() {
+   const { open, i } = useTour();
+@@ -23,88 +90,157 @@ export function Tour() {
+   const total = TOUR_STEPS.length;
+   const navigate = useNavigate();
+   const location = useLocation();
+-  const [rect, setRect] = useState<Rect | null>(null);
+-  const [ready, setReady] = useState(false);
++  const [phase, setPhase] = useState<Phase>('acquiring');
+   const firedActions = useRef<Set<string>>(new Set());
+   const nextBtnRef = useRef<HTMLButtonElement>(null);
++  const spotlightRef = useRef<HTMLDivElement>(null);
++  const cardRef = useRef<HTMLDivElement>(null);
+ 
++  // A fresh session every time the walkthrough opens.
+   useEffect(() => {
+-    if (open && i === 0) {
+-      firedActions.current.clear();
+-      setReady(false);
+-      setRect(null);
+-    }
+-  }, [open, i]);
++    if (open) firedActions.current.clear();
++  }, [open]);
+ 
++  // Route the page to the step — replace, never push, so the tour leaves no
++  // trail of history entries for the browser Back button to replay.
+   useEffect(() => {
+     if (!open || !step?.route) return;
+-    if (location.pathname !== step.route) navigate(step.route);
++    if (location.pathname !== step.route) navigate(step.route, { replace: true });
+   }, [open, step, location.pathname, navigate]);
+ 
++  // Pre-paint default: the card starts centred so it can never flash at (0,0).
++  useLayoutEffect(() => {
++    if (open && cardRef.current) positionCard(cardRef.current, null);
++  }, [open, step]);
++
++  /**
++   * THE FIX — one tracking loop per step.
++   *
++   * The old overlay measured the target once and froze, and never scrolled:
++   * steps deep in the page spotlighted elements below the fold, and entrance
++   * animations / async charts / alert toasts left the highlight misplaced.
++   * This loop instead
++   *   1. keeps querying the DOM until a data-driven target mounts
++   *      (live camera section, evidence vault, …),
++   *   2. scrolls the target into view the moment it is found,
++   *   3. re-measures EVERY FRAME so the spotlight follows layout shifts
++   *      and scrolling for as long as the step is on screen.
++   */
+   useEffect(() => {
+     if (!open || !step) return;
+-    const fire = () => {
++    const target = step.target;
++    setPhase(target ? 'acquiring' : 'ready');
++
++    const fireOnce = () => {
+       if (step.action && !firedActions.current.has(step.id)) {
+         firedActions.current.add(step.id);
+         window.setTimeout(step.action, 80);
+       }
+     };
+-    if (!step.target) {
+-      setRect(null);
+-      setReady(true);
+-      fire();
+-      return;
+-    }
+-    const target = step.target;
++    if (!target) fireOnce();
++
+     let stopped = false;
+-    let tries = 0;
+-    let timer = 0;
+-    const measure = (el: Element): boolean => {
+-      const r = el.getBoundingClientRect();
+-      if (r.width < 24 && r.height < 24) return false;
+-      setRect({ x: r.x, y: r.y, w: r.width, h: r.height });
+-      return true;
+-    };
+-    setReady(false);
+-    const tick = () => {
++    let raf = 0;
++    let el: Element | null = null;
++    let lastQuery = -QUERY_EVERY_MS;
++    let gaveUp = false;
++    let last: Rect | null = null;
++    let lastCenter = 0;
++    const startedAt = performance.now();
++
++    const tick = (now: number) => {
+       if (stopped) return;
+-      const el = document.querySelector(target);
+-      if (el && measure(el)) {
+-        setReady(true);
+-        fire();
+-        return;
++      const card = cardRef.current;
++      const spotlight = spotlightRef.current;
++
++      // 1. acquisition — keep looking while the target has not mounted yet.
++      if (target && !el && now - lastQuery >= QUERY_EVERY_MS) {
++        lastQuery = now;
++        const found = document.querySelector(target);
++        if (found) {
++          const probe = found.getBoundingClientRect();
++          if (probe.width >= MIN_SIZE || probe.height >= MIN_SIZE) {
++            el = found;
++            const rect = { x: probe.x, y: probe.y, w: probe.width, h: probe.height };
++            // 2. bring the spotlighted element on screen before showing it.
++            if (!isOnScreen(rect, window.innerHeight)) scrollTargetIntoView(el);
++            setPhase('ready');
++            fireOnce();
++          }
++        } else if (!gaveUp && now - startedAt >= GIVE_UP_MS) {
++          // Target never appeared (backend down, empty dataset): fall back to
++          // a centred card instead of a spotlight pointing at nothing.
++          gaveUp = true;
++          setPhase('fallback');
++          fireOnce();
++        }
+       }
+-      if (++tries > 160) {
+-        setRect(null);
+-        setReady(true);
+-        fire();
+-        return;
++
++      if (el && card && spotlight) {
++        const dom = el.getBoundingClientRect();
++        if (dom.width < 1 && dom.height < 1) {
++          // Target unmounted mid-step (data refreshed, section gone) — re-acquire.
++          el = null;
++          last = null;
++        } else {
++          const rect: Rect = { x: dom.x, y: dom.y, w: dom.width, h: dom.height };
++          // 3. follow every layout shift and scroll, frame by frame.
++          const moved =
++            !last ||
++            Math.abs(last.x - rect.x) > MOVE_EPS ||
++            Math.abs(last.y - rect.y) > MOVE_EPS ||
++            Math.abs(last.w - rect.w) > MOVE_EPS ||
++            Math.abs(last.h - rect.h) > MOVE_EPS;
++          if (moved) {
++            writeIfChanged(spotlight, 'left', `${rect.x - PAD}px`);
++            writeIfChanged(spotlight, 'top', `${rect.y - PAD}px`);
++            writeIfChanged(spotlight, 'width', `${rect.w + PAD * 2}px`);
++            writeIfChanged(spotlight, 'height', `${rect.h + PAD * 2}px`);
++            last = rect;
++          }
++          writeIfChanged(spotlight, 'opacity', '1');
++          // A late chart render or an incoming toast can push the target out
++          // of the viewport after the fact — pull it back (throttled, and
++          // only for targets small enough to actually fit).
++          const vh = window.innerHeight;
++          const clipped =
++            Math.max(0, STICKY_SAFE - rect.y) + Math.max(0, rect.y + rect.h - (vh - EDGE));
++          const fits = rect.h < vh - STICKY_SAFE - EDGE;
++          if (fits && clipped / Math.max(rect.h, 1) > 0.6 && now - lastCenter > 1500) {
++            lastCenter = now;
++            scrollTargetIntoView(el);
++          }
++          positionCard(card, rect);
++        }
+       }
+-      timer = window.setTimeout(() => requestAnimationFrame(tick), 40);
+-    };
+-    requestAnimationFrame(tick);
+-    const reflow = () => {
+-      const el = document.querySelector(target);
+-      if (el) measure(el);
++
++      if (!el) {
++        if (spotlight) writeIfChanged(spotlight, 'opacity', '0');
++        if (card) positionCard(card, null);
++      }
++
++      raf = requestAnimationFrame(tick);
+     };
+-    window.addEventListener('resize', reflow);
+-    window.addEventListener('scroll', reflow, true);
++    raf = requestAnimationFrame(tick);
+     return () => {
+       stopped = true;
+-      clearTimeout(timer);
+-      window.removeEventListener('resize', reflow);
+-      window.removeEventListener('scroll', reflow, true);
++      cancelAnimationFrame(raf);
+     };
+   }, [open, step, location.pathname]);
+ 
++  // Keyboard navigation — but never steal keys from a field being typed in.
+   useEffect(() => {
+     if (!open) return;
+     const onKey = (e: KeyboardEvent) => {
++      if (isTypingTarget(e.target)) return;
+       if (e.key === 'Escape') tourStore.stop();
+       else if (e.key === 'Enter' || e.key === 'ArrowRight') {
+         e.preventDefault();
+         tourStore.next(total);
+-      } else if (e.key === 'ArrowLeft') tourStore.prev();
++      } else if (e.key === 'ArrowLeft') {
++        e.preventDefault();
++        tourStore.prev();
++      }
+     };
+     window.addEventListener('keydown', onKey);
+     return () => window.removeEventListener('keydown', onKey);
+@@ -116,20 +252,6 @@ export function Tour() {
+ 
+   if (!open || !step) return null;
+ 
+-  const vw = window.innerWidth;
+-  const vh = window.innerHeight;
+-  let cardStyle: React.CSSProperties;
+-  if (!rect) {
+-    cardStyle = { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' };
+-  } else {
+-    const below = rect.y + rect.h + GAP + CARD_H_EST < vh;
+-    const top = below
+-      ? rect.y + rect.h + GAP
+-      : Math.max(12, Math.min(rect.y - GAP - CARD_H_EST, vh - CARD_H_EST - 12));
+-    const left = Math.max(12, Math.min(rect.x + rect.w / 2 - CARD_W / 2, vw - CARD_W - 12));
+-    cardStyle = { left, top };
+-  }
+-
+   const progress = Math.round(((i + 1) / total) * 100);
+ 
+   return (
+@@ -139,29 +261,25 @@ export function Tour() {
+         onClick={() => tourStore.next(total)}
+         aria-hidden
+       />
+-      {rect ? (
+-        <div
+-          aria-hidden
+-          className="pointer-events-none fixed z-[10041] rounded-xl transition-all duration-300 ease-out"
+-          style={{
+-            left: rect.x - PAD,
+-            top: rect.y - PAD,
+-            width: rect.w + PAD * 2,
+-            height: rect.h + PAD * 2,
+-            boxShadow:
+-              '0 0 0 9999px rgba(2,6,23,.68), 0 0 0 2px rgba(37,99,235,.9), 0 0 0 6px rgba(37,99,235,.18), 0 8px 32px rgba(0,0,0,.35)',
+-          }}
+-        />
+-      ) : null}
++      {/* The spotlight hole. Position is driven imperatively every frame by
++          the tracking loop, so it must not carry a CSS position transition. */}
++      <div
++        ref={spotlightRef}
++        data-tour-spotlight
++        aria-hidden
++        className="pointer-events-none fixed z-[10041] rounded-xl"
++        style={{ opacity: 0, transition: 'opacity 150ms ease', boxShadow: '0 0 0 9999px rgba(2,6,23,.68), 0 0 0 2px rgba(37,99,235,.9), 0 0 0 6px rgba(37,99,235,.18), 0 8px 32px rgba(0,0,0,.35)' }}
++      />
+ 
+       <div
++        ref={cardRef}
++        data-tour-card
+         role="dialog"
+         aria-label={`Guided walkthrough step ${i + 1} of ${total}: ${step.title}`}
+         className={cn(
+-          'fixed z-[10042] w-[380px] max-w-[calc(100vw-24px)] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_20px_60px_rgba(2,6,23,.25),0_0_0_1px_rgba(2,6,23,.06)] transition-all duration-300 ease-out',
+-          !ready && 'pointer-events-none opacity-0 translate-y-2',
++          'fixed z-[10042] max-h-[calc(100vh-1.5rem)] w-[380px] max-w-[calc(100vw-24px)] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-[0_20px_60px_rgba(2,6,23,.25),0_0_0_1px_rgba(2,6,23,.06)] transition-[opacity,transform] duration-200 ease-out',
++          phase === 'acquiring' && 'pointer-events-none opacity-0 translate-y-2',
+         )}
+-        style={cardStyle}
+         onClick={(e) => e.stopPropagation()}
+       >
+         {/* Progress bar */}
+diff --git a/trinetra-ai/src/pages/VehicleInvestigation.tsx b/trinetra-ai/src/pages/VehicleInvestigation.tsx
+index a4ba749..8cec3a1 100644
+--- a/trinetra-ai/src/pages/VehicleInvestigation.tsx
++++ b/trinetra-ai/src/pages/VehicleInvestigation.tsx
+@@ -69,7 +69,7 @@ export default function VehicleInvestigation() {
+ 
+   if (loading) {
+     return (
+-      <div className="p-4">
++      <div className="p-4" data-tour="trace">
+         <div className="panel">
+           <LoadingState label={`Reconstructing movement history for ${plate}`} rows={6} />
+         </div>
+@@ -80,7 +80,7 @@ export default function VehicleInvestigation() {
+   if (error) {
+     if (!isValidPlate(plate)) {
+       return (
+-        <div className="p-4">
++        <div className="p-4" data-tour="trace">
+           <div className="panel">
+             <InvalidPlateNotice raw={plate} />
+           </div>
+@@ -88,7 +88,7 @@ export default function VehicleInvestigation() {
+       );
+     }
+     return (
+-      <div className="p-4">
++      <div className="p-4" data-tour="trace">
+         <div className="panel">
+           <ErrorState message={error} onRetry={() => trace(plate)} />
+         </div>
+@@ -103,7 +103,7 @@ export default function VehicleInvestigation() {
+         backLabel="Back to search"
+         title={<span className="plate text-sm text-ink">{prettyPlate(plate)}</span>}
+       >
+-        <div className="p-4">
++        <div className="p-4" data-tour="trace">
+           <div className="panel">
+             <EmptyState
+               icon={Car}
+diff --git a/trinetra-ai/tests/run-tests.mjs b/trinetra-ai/tests/run-tests.mjs
+index 054c3f1..bdea980 100644
+--- a/trinetra-ai/tests/run-tests.mjs
++++ b/trinetra-ai/tests/run-tests.mjs
+@@ -12,5 +12,6 @@ import { runAll } from './harness.mjs';
+ await import('./adapters.test.mjs');
+ await import('./env-setup.test.mjs');
+ await import('./source-contracts.test.mjs');
++await import('./tour.test.mjs');
+ 
+ process.exit(await runAll());
+diff --git a/trinetra-ai/tests/source-contracts.test.mjs b/trinetra-ai/tests/source-contracts.test.mjs
+index 3764f08..5478c87 100644
+--- a/trinetra-ai/tests/source-contracts.test.mjs
++++ b/trinetra-ai/tests/source-contracts.test.mjs
+@@ -50,7 +50,11 @@ const player = readSource('trinetra-ai/src/components/camera/CameraPlayer.tsx');
+ 
+ test('isMjpeg is part of the dependency array', () => {
+   includes(player, 'const isMjpeg = ticket?.streamType === \'MJPEG\';');
+-  includes(player, 'setMjpegSrc(isMjpeg ? `/cvfeed/${camera.id}` : null);');
++  // Updated for the ticket-URL preference: the player now prefers
++  // ticket.streamUrl and only falls back to the /cvfeed mirror. The intent of
++  // this contract (isMjpeg drives the src and sits in the dependency array)
++  // is unchanged.
++  includes(player, 'setMjpegSrc(isMjpeg ? (ticket?.streamUrl || `/cvfeed/${camera.id}`) : null);');
+   includes(
+     player,
+     '}, [ticket?.cameraId, ticket?.streamUrl, ticket?.detectionUrl, detectionActive, camera.id, isMjpeg]);',
+diff --git a/trinetra-ai/tests/tour.test.mjs b/trinetra-ai/tests/tour.test.mjs
+new file mode 100644
+index 0000000..944f03b
+--- /dev/null
++++ b/trinetra-ai/tests/tour.test.mjs
+@@ -0,0 +1,97 @@
++/**
++ * Guided walkthrough regression tests.
++ *
++ * The tour overlay used to measure its target once and never scroll, so any
++ * step deep in the page (federation modules, alerts desk, GIS map, evidence
++ * vault…) spotlighted an element below the fold: the card floated over a dark
++ * backdrop describing something invisible. These contracts pin the fix.
++ */
++import {
++  excludes,
++  includes,
++  loadTs,
++  notOk,
++  ok,
++  readSource,
++  suite,
++  test,
++} from './harness.mjs';
++
++/* ----------------------- source contracts: Tour.tsx ----------------------- */
++
++suite('guided tour — the spotlight stays on screen and on target');
++
++const tour = readSource('trinetra-ai/src/features/tour/Tour.tsx');
++
++test('a step scrolls its target into view before spotlighting it', () => {
++  includes(tour, 'scrollTargetIntoView', 'without scrolling, below-the-fold steps highlight invisible elements');
++  includes(tour, "block: 'center'", 'centering keeps the target clear of the sticky header and nav');
++});
++
++test('the spotlight keeps re-measuring every frame instead of freezing', () => {
++  includes(tour, 'requestAnimationFrame', 'a one-shot measurement goes stale when charts, toasts and animations shift the layout');
++  includes(tour, 'isOnScreen', 'already-visible targets must not trigger a disorienting scroll');
++});
++
++test('the card is placed from its real measured size, clamped to the viewport', () => {
++  includes(tour, 'positionCard(card, rect)');
++  excludes(tour, 'CARD_H_EST', 'a hard-coded card-height estimate drifts and lets the card overflow the screen');
++});
++
++test('late-mounted targets (live camera, evidence vault) are waited for, not dropped', () => {
++  includes(tour, 'GIVE_UP_MS');
++  includes(tour, 'QUERY_EVERY_MS');
++});
++
++test('tour navigation replaces history instead of spamming the Back button', () => {
++  includes(tour, 'navigate(step.route, { replace: true })');
++});
++
++test('keyboard shortcuts are ignored while the user types in a field', () => {
++  includes(tour, 'isTypingTarget(e.target)');
++});
++
++test('the spotlight and card carry stable hooks for UI tests', () => {
++  includes(tour, 'data-tour-spotlight');
++  includes(tour, 'data-tour-card');
++});
++
++/* ----------------- source contracts: VehicleInvestigation ---------------- */
++
++suite('guided tour — the trace step has a target in every page state');
++
++const investigation = readSource('trinetra-ai/src/pages/VehicleInvestigation.tsx');
++
++test('loading, invalid-plate, error, empty and success states all carry the trace target', () => {
++  const hits = investigation.split('data-tour="trace"').length - 1;
++  ok(hits >= 5, `expected the trace target in every page state, found ${hits}`);
++});
++
++/* ----------------------- executed: tourStore.ts -------------------------- */
++
++suite('guided tour — store navigation');
++
++const { tourStore } = loadTs('src/features/tour/tourStore.ts', {
++  react: { useSyncExternalStore: () => ({ open: false, i: 0 }) },
++});
++
++test('start() opens at the requested step', () => {
++  tourStore.start(3);
++  const s = tourStore.get();
++  ok(s.open, 'the tour should be open');
++  ok(s.i === 3, `expected step 3, got ${s.i}`);
++});
++
++test('next() advances and stops cleanly at the end of the last step', () => {
++  tourStore.start(0);
++  tourStore.next(2);
++  ok(tourStore.get().i === 1, 'next() should advance one step');
++  tourStore.next(2);
++  notOk(tourStore.get().open, 'next() on the final step should close the tour');
++});
++
++test('prev() never runs below the first step', () => {
++  tourStore.start(0);
++  tourStore.prev();
++  ok(tourStore.get().i === 0, 'prev() at step 0 must stay at 0');
++});

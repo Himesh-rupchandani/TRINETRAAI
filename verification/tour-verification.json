@@ -1,0 +1,461 @@
+{
+  "failures": 0,
+  "results": [
+    {
+      "step": "startup",
+      "name": "no auto-start for a visitor who has seen the tour",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "step": "intro",
+      "name": "card shows \"Welcome to TRINETRA AI\"",
+      "pass": true,
+      "detail": "Welcome to TRINETRA AI"
+    },
+    {
+      "step": "intro",
+      "name": "card inside viewport",
+      "pass": true,
+      "detail": "card 450,258 380x285 (body 81px @13px)"
+    },
+    {
+      "step": "intro",
+      "name": "no spotlight for targetless step",
+      "pass": true,
+      "detail": "opacity=0"
+    },
+    {
+      "step": "command-center",
+      "name": "card shows \"Command Center Header\"",
+      "pass": true,
+      "detail": "Command Center Header"
+    },
+    {
+      "step": "command-center",
+      "name": "card inside viewport",
+      "pass": true,
+      "detail": "card 450,230 380x305 (body 101px @13px)"
+    },
+    {
+      "step": "command-center",
+      "name": "target element exists",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "step": "command-center",
+      "name": "spotlight aligned with target",
+      "pass": true,
+      "detail": "Δx=0.0 Δy=0.0 Δw=0.0 Δh=0.0"
+    },
+    {
+      "step": "command-center",
+      "name": "spotlight visible",
+      "pass": true,
+      "detail": "opacity=1"
+    },
+    {
+      "step": "command-center",
+      "name": "spotlight ON SCREEN (the old bug)",
+      "pass": true,
+      "detail": "230px visible of 230px spotlight, scrollY=0/2236"
+    },
+    {
+      "step": "kpis",
+      "name": "card shows \"Operations Dashboard\"",
+      "pass": true,
+      "detail": "Operations Dashboard"
+    },
+    {
+      "step": "kpis",
+      "name": "card inside viewport",
+      "pass": true,
+      "detail": "card 450,12 380x305 (body 101px @13px)"
+    },
+    {
+      "step": "kpis",
+      "name": "target element exists",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "step": "kpis",
+      "name": "spotlight aligned with target",
+      "pass": true,
+      "detail": "Δx=0.0 Δy=0.0 Δw=0.0 Δh=0.0"
+    },
+    {
+      "step": "kpis",
+      "name": "spotlight visible",
+      "pass": true,
+      "detail": "opacity=1"
+    },
+    {
+      "step": "kpis",
+      "name": "spotlight ON SCREEN (the old bug)",
+      "pass": true,
+      "detail": "214px visible of 214px spotlight, scrollY=1345/2236"
+    },
+    {
+      "step": "live-camera",
+      "name": "card shows \"Live Camera Feed\"",
+      "pass": true,
+      "detail": "Live Camera Feed"
+    },
+    {
+      "step": "live-camera",
+      "name": "card inside viewport",
+      "pass": true,
+      "detail": "card 450,297 380x305 (body 101px @13px)"
+    },
+    {
+      "step": "live-camera",
+      "name": "target element exists",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "step": "live-camera",
+      "name": "spotlight aligned with target",
+      "pass": true,
+      "detail": "Δx=0.0 Δy=0.0 Δw=0.0 Δh=0.0"
+    },
+    {
+      "step": "live-camera",
+      "name": "spotlight visible",
+      "pass": true,
+      "detail": "opacity=1"
+    },
+    {
+      "step": "live-camera",
+      "name": "spotlight ON SCREEN (the old bug)",
+      "pass": true,
+      "detail": "289px visible of 802px spotlight, scrollY=1345/2236"
+    },
+    {
+      "step": "bandwidth",
+      "name": "card shows \"Federation Architecture\"",
+      "pass": true,
+      "detail": "Federation Architecture"
+    },
+    {
+      "step": "bandwidth",
+      "name": "card inside viewport",
+      "pass": true,
+      "detail": "card 138,236 380x305 (body 101px @13px)"
+    },
+    {
+      "step": "bandwidth",
+      "name": "target element exists",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "step": "bandwidth",
+      "name": "spotlight aligned with target",
+      "pass": true,
+      "detail": "Δx=0.0 Δy=0.0 Δw=0.0 Δh=0.0"
+    },
+    {
+      "step": "bandwidth",
+      "name": "spotlight visible",
+      "pass": true,
+      "detail": "opacity=1"
+    },
+    {
+      "step": "bandwidth",
+      "name": "spotlight ON SCREEN (the old bug)",
+      "pass": true,
+      "detail": "211px visible of 211px spotlight, scrollY=1345/2236"
+    },
+    {
+      "step": "ai-insights",
+      "name": "card shows \"AI Intelligence Analytics\"",
+      "pass": true,
+      "detail": "AI Intelligence Analytics"
+    },
+    {
+      "step": "ai-insights",
+      "name": "card inside viewport",
+      "pass": true,
+      "detail": "card 762,236 380x305 (body 101px @13px)"
+    },
+    {
+      "step": "ai-insights",
+      "name": "target element exists",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "step": "ai-insights",
+      "name": "spotlight aligned with target",
+      "pass": true,
+      "detail": "Δx=0.0 Δy=0.0 Δw=0.0 Δh=0.0"
+    },
+    {
+      "step": "ai-insights",
+      "name": "spotlight visible",
+      "pass": true,
+      "detail": "opacity=1"
+    },
+    {
+      "step": "ai-insights",
+      "name": "spotlight ON SCREEN (the old bug)",
+      "pass": true,
+      "detail": "211px visible of 211px spotlight, scrollY=1345/2236"
+    },
+    {
+      "step": "alerts",
+      "name": "card shows \"Active Alerts Desk\"",
+      "pass": true,
+      "detail": "Active Alerts Desk"
+    },
+    {
+      "step": "alerts",
+      "name": "card inside viewport",
+      "pass": true,
+      "detail": "card 190,12 380x305 (body 101px @13px)"
+    },
+    {
+      "step": "alerts",
+      "name": "target element exists",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "step": "alerts",
+      "name": "spotlight aligned with target",
+      "pass": true,
+      "detail": "Δx=0.0 Δy=0.0 Δw=0.0 Δh=0.0"
+    },
+    {
+      "step": "alerts",
+      "name": "spotlight visible",
+      "pass": true,
+      "detail": "opacity=1"
+    },
+    {
+      "step": "alerts",
+      "name": "spotlight ON SCREEN (the old bug)",
+      "pass": true,
+      "detail": "640px visible of 640px spotlight, scrollY=2029/2236"
+    },
+    {
+      "step": "map",
+      "name": "card shows \"Live GIS Tracking\"",
+      "pass": true,
+      "detail": "Live GIS Tracking"
+    },
+    {
+      "step": "map",
+      "name": "card inside viewport",
+      "pass": true,
+      "detail": "card 814,12 380x305 (body 101px @13px)"
+    },
+    {
+      "step": "map",
+      "name": "target element exists",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "step": "map",
+      "name": "spotlight aligned with target",
+      "pass": true,
+      "detail": "Δx=0.0 Δy=0.0 Δw=0.0 Δh=0.0"
+    },
+    {
+      "step": "map",
+      "name": "spotlight visible",
+      "pass": true,
+      "detail": "opacity=1"
+    },
+    {
+      "step": "map",
+      "name": "spotlight ON SCREEN (the old bug)",
+      "pass": true,
+      "detail": "640px visible of 640px spotlight, scrollY=2029/2236"
+    },
+    {
+      "step": "investigation",
+      "name": "card shows \"Vehicle Journey Reconstruction\"",
+      "pass": true,
+      "detail": "Vehicle Journey Reconstruction"
+    },
+    {
+      "step": "investigation",
+      "name": "card inside viewport",
+      "pass": true,
+      "detail": "card 450,204 380x305 (body 101px @13px)"
+    },
+    {
+      "step": "investigation",
+      "name": "target element exists",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "step": "investigation",
+      "name": "spotlight aligned with target",
+      "pass": true,
+      "detail": "Δx=0.0 Δy=0.0 Δw=0.0 Δh=0.0"
+    },
+    {
+      "step": "investigation",
+      "name": "spotlight visible",
+      "pass": true,
+      "detail": "opacity=1"
+    },
+    {
+      "step": "investigation",
+      "name": "spotlight ON SCREEN (the old bug)",
+      "pass": true,
+      "detail": "268px visible of 268px spotlight, scrollY=2236/2236 (max scroll)"
+    },
+    {
+      "step": "trace",
+      "name": "card shows \"Full Investigation Workspace\"",
+      "pass": true,
+      "detail": "Full Investigation Workspace"
+    },
+    {
+      "step": "trace",
+      "name": "card inside viewport",
+      "pass": true,
+      "detail": "card 450,12 380x305 (body 101px @13px)"
+    },
+    {
+      "step": "trace",
+      "name": "target element exists",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "step": "trace",
+      "name": "spotlight aligned with target",
+      "pass": true,
+      "detail": "Δx=0.0 Δy=0.0 Δw=0.0 Δh=0.0"
+    },
+    {
+      "step": "trace",
+      "name": "spotlight visible",
+      "pass": true,
+      "detail": "opacity=1"
+    },
+    {
+      "step": "trace",
+      "name": "spotlight ON SCREEN (the old bug)",
+      "pass": true,
+      "detail": "529px visible of 1787px spotlight, scrollY=0/1250"
+    },
+    {
+      "step": "speed-engine",
+      "name": "card shows \"Speed Violation Engine\"",
+      "pass": true,
+      "detail": "Speed Violation Engine"
+    },
+    {
+      "step": "speed-engine",
+      "name": "card inside viewport",
+      "pass": true,
+      "detail": "card 450,370 380x305 (body 101px @13px)"
+    },
+    {
+      "step": "speed-engine",
+      "name": "target element exists",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "step": "speed-engine",
+      "name": "spotlight aligned with target",
+      "pass": true,
+      "detail": "Δx=0.0 Δy=0.0 Δw=0.0 Δh=0.0"
+    },
+    {
+      "step": "speed-engine",
+      "name": "spotlight visible",
+      "pass": true,
+      "detail": "opacity=1"
+    },
+    {
+      "step": "speed-engine",
+      "name": "spotlight ON SCREEN (the old bug)",
+      "pass": true,
+      "detail": "70px visible of 70px spotlight, scrollY=0/1250"
+    },
+    {
+      "step": "evidence-vault",
+      "name": "card shows \"Evidence Vault — BSA 2023\"",
+      "pass": true,
+      "detail": "Evidence Vault — BSA 2023"
+    },
+    {
+      "step": "evidence-vault",
+      "name": "card inside viewport",
+      "pass": true,
+      "detail": "card 450,368 380x305 (body 101px @13px)"
+    },
+    {
+      "step": "evidence-vault",
+      "name": "target element exists",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "step": "evidence-vault",
+      "name": "spotlight aligned with target",
+      "pass": true,
+      "detail": "Δx=0.0 Δy=0.0 Δw=0.0 Δh=0.0"
+    },
+    {
+      "step": "evidence-vault",
+      "name": "spotlight visible",
+      "pass": true,
+      "detail": "opacity=1"
+    },
+    {
+      "step": "evidence-vault",
+      "name": "spotlight ON SCREEN (the old bug)",
+      "pass": true,
+      "detail": "107px visible of 107px spotlight, scrollY=1250/1250 (max scroll)"
+    },
+    {
+      "step": "outro",
+      "name": "card shows \"Complete Investigation Loop\"",
+      "pass": true,
+      "detail": "Complete Investigation Loop"
+    },
+    {
+      "step": "outro",
+      "name": "card inside viewport",
+      "pass": true,
+      "detail": "card 450,248 380x305 (body 101px @13px)"
+    },
+    {
+      "step": "outro",
+      "name": "no spotlight for targetless step",
+      "pass": true,
+      "detail": "opacity=0"
+    },
+    {
+      "step": "exit",
+      "name": "tour closes after the final step",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "step": "history",
+      "name": "no history entries added by the tour",
+      "pass": true,
+      "detail": "before=2 after=2"
+    },
+    {
+      "step": "auto-start",
+      "name": "first visit opens the tour automatically",
+      "pass": true,
+      "detail": "Welcome to TRINETRA AI"
+    }
+  ]
+}
