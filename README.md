@@ -280,3 +280,4 @@ cd trinetra-ai && npm test               # 48 frontend contract tests (plain nod
 The backend suite also drives the frontend suite (`tests/test_frontend_js_suite.py`), so a
 single `pytest` run covers all three layers — it is skipped, not failed, when `node` or
 `trinetra-ai/node_modules` are unavailable.
+<!-- Trigger Vercel production deployment -->
