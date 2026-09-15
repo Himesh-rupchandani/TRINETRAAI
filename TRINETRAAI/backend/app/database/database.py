@@ -12,9 +12,11 @@ if __name__ == "__main__" and not __package__:
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
+
 from ..core.config import settings
 from ..core.logging_config import logger
 from .models import Base, Camera, Watchlist
+
 
 # Build engine depending on SQLite vs PostgreSQL
 db_url = settings.DATABASE_URL
@@ -30,15 +32,25 @@ try:
         pool_pre_ping=True,
     )
 except Exception as e:
-    logger.error(f"Failed to create database engine with {db_url}: {e}. Falling back to SQLite.")
+    logger.error(
+        f"Failed to create database engine with {db_url}: {e}. "
+        "Falling back to SQLite."
+    )
     db_url = "sqlite:///./trinetra.db"
-    engine = create_engine(db_url, connect_args={"check_same_thread": False})
+    engine = create_engine(
+        db_url,
+        connect_args={"check_same_thread": False},
+    )
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+SessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine,
+)
 
 
 def get_db():
-    """FastAPI database session dependency."""
+    """Provide a database session for FastAPI dependencies."""
     db = SessionLocal()
     try:
         yield db
@@ -47,10 +59,11 @@ def get_db():
 
 
 def _auto_migrate(target_engine=None):
-    """Automatically adds newly added columns to existing tables if missing."""
+    """Automatically add newly introduced columns when missing."""
     eng = target_engine or engine
+
     with eng.begin() as conn:
-        for col, col_def in [
+        camera_columns = [
             ("location", "VARCHAR(200)"),
             ("codec", "VARCHAR(50) DEFAULT 'H264'"),
             ("width", "INTEGER DEFAULT 1920"),
@@ -58,61 +71,103 @@ def _auto_migrate(target_engine=None):
             ("department", "VARCHAR(100)"),
             ("zone", "VARCHAR(50)"),
             ("fps", "INTEGER"),
-        ]:
+        ]
+
+        for column_name, column_definition in camera_columns:
             try:
-                conn.execute(text(f"ALTER TABLE cameras ADD COLUMN {col} {col_def}"))
-                logger.info(f"Added missing column cameras.{col}")
+                conn.execute(
+                    text(
+                        "ALTER TABLE cameras "
+                        f"ADD COLUMN {column_name} {column_definition}"
+                    )
+                )
+                logger.info(
+                    f"Added missing column cameras.{column_name}"
+                )
             except Exception:
+                # The column already exists.
                 pass
 
-        for col, col_def in [
+        alert_columns = [
             ("event_id", "INTEGER REFERENCES vehicle_events(id)"),
             ("watchlist_id", "INTEGER REFERENCES watchlist(id)"),
             ("confidence", "FLOAT"),
-            # Resolution note, stored separately from resolved_by.
             ("resolution_note", "TEXT"),
-        ]:
+        ]
+
+        for column_name, column_definition in alert_columns:
             try:
-                conn.execute(text(f"ALTER TABLE alerts ADD COLUMN {col} {col_def}"))
-                logger.info(f"Added missing column alerts.{col}")
+                conn.execute(
+                    text(
+                        "ALTER TABLE alerts "
+                        f"ADD COLUMN {column_name} {column_definition}"
+                    )
+                )
+                logger.info(
+                    f"Added missing column alerts.{column_name}"
+                )
             except Exception:
+                # The column already exists.
                 pass
 
-        # Manually-uploaded CCTV video provenance on sightings.
-        for col, col_def in [
+        vehicle_event_columns = [
             ("video_file", "VARCHAR(255)"),
             ("video_offset_sec", "FLOAT"),
-            # Multi-video analysis provenance (frame/box/detector confidence).
             ("video_id", "VARCHAR(64)"),
             ("frame_number", "INTEGER"),
             ("vehicle_confidence", "FLOAT"),
             ("bbox_json", "VARCHAR(200)"),
             ("plate_status", "VARCHAR(20)"),
-        ]:
+        ]
+
+        for column_name, column_definition in vehicle_event_columns:
             try:
-                conn.execute(text(f"ALTER TABLE vehicle_events ADD COLUMN {col} {col_def}"))
-                logger.info(f"Added missing column vehicle_events.{col}")
+                conn.execute(
+                    text(
+                        "ALTER TABLE vehicle_events "
+                        f"ADD COLUMN {column_name} {column_definition}"
+                    )
+                )
+                logger.info(
+                    f"Added missing column vehicle_events.{column_name}"
+                )
             except Exception:
+                # The column already exists.
                 pass
 
 
 def init_db():
-    """Create all database tables and seed default mock / initial cameras & watchlist if empty."""
+    """
+    Create all database tables.
+
+    Demo cameras and watchlist entries are seeded only when
+    DEMO_MODE is explicitly enabled.
+    """
     logger.info("Initializing database tables...")
+
     Base.metadata.create_all(bind=engine)
     _auto_migrate(engine)
 
-if not settings.DEMO_MODE: return
+    # Real-only production mode: create tables but never insert fake data.
+    if not settings.DEMO_MODE:
+        logger.info(
+            "DEMO_MODE=false - skipping initial demo "
+            "camera/watchlist seed."
+        )
+        return
 
-    # Seed default data if database is empty
+    logger.info(
+        "DEMO_MODE=true - initial demo data may be created."
+    )
+
     db = SessionLocal()
+
     try:
-        # Check cameras
+        # Seed demo cameras only when DEMO_MODE=true and table is empty.
         if db.query(Camera).count() == 0:
-            logger.info("Seeding initial CCTV camera locations...")
+            logger.info("Seeding initial demo CCTV camera locations...")
+
             initial_cameras = [
-                # Same identity rows as scripts/seed_demo.py: a camera label
-                # must never differ between the two seeders.
                 Camera(
                     camera_id="CAM04",
                     name="Paldi Circle",
@@ -127,7 +182,10 @@ if not settings.DEMO_MODE: return
                     camera_id="CAM01",
                     name="Chiman bhai Bridge",
                     location="Chiman bhai Bridge",
-                    stream_url="https://cctv.corp8.cloud/cam01/index.m3u8",
+                    stream_url=(
+                        "https://cctv.corp8.cloud/"
+                        "cam01/index.m3u8"
+                    ),
                     stream_type="hls",
                     latitude=23.0730,
                     longitude=72.5920,
@@ -137,7 +195,10 @@ if not settings.DEMO_MODE: return
                     camera_id="CAM02",
                     name="Janpath",
                     location="Janpath",
-                    stream_url="https://cctv.corp8.cloud/cam02/index.m3u8",
+                    stream_url=(
+                        "https://cctv.corp8.cloud/"
+                        "cam02/index.m3u8"
+                    ),
                     stream_type="hls",
                     latitude=23.0225,
                     longitude=72.5625,
@@ -147,49 +208,64 @@ if not settings.DEMO_MODE: return
                     camera_id="CAM03",
                     name="O.N.G.C. Office",
                     location="O.N.G.C. Office",
-                    stream_url="https://cctv.corp8.cloud/cam03/index.m3u8",
+                    stream_url=(
+                        "https://cctv.corp8.cloud/"
+                        "cam03/index.m3u8"
+                    ),
                     stream_type="hls",
                     latitude=23.1070,
                     longitude=72.5950,
                     status="OFFLINE",
                 ),
             ]
+
             db.add_all(initial_cameras)
             db.commit()
 
-        # Check watchlist
+        # Seed demo watchlist only when DEMO_MODE=true and table is empty.
         if db.query(Watchlist).count() == 0:
-            logger.info("Seeding initial watchlist entries for demonstration...")
+            logger.info("Seeding initial demo watchlist entries...")
+
             initial_watchlist = [
                 Watchlist(
                     plate_number="GJ01AB1234",
                     category="stolen vehicle",
-                    description="Silver Sedan - Reported stolen FIR #4812",
+                    description=(
+                        "Silver Sedan - Reported stolen "
+                        "FIR #4812"
+                    ),
                     active=True,
                 ),
                 Watchlist(
                     plate_number="MH02CD5678",
                     category="wanted vehicle",
-                    description="Black SUV - Suspect in inter-state logistics theft",
+                    description=(
+                        "Black SUV - Suspect in inter-state "
+                        "logistics theft"
+                    ),
                     active=True,
                 ),
                 Watchlist(
                     plate_number="DL08EF9012",
                     category="suspicious vehicle",
-                    description="White Hatchback - Multiple toll avoidance flags",
+                    description=(
+                        "White Hatchback - Multiple toll "
+                        "avoidance flags"
+                    ),
                     active=True,
                 ),
             ]
+
             db.add_all(initial_watchlist)
             db.commit()
 
     except Exception as e:
         logger.error(f"Error while seeding database: {e}")
         db.rollback()
+        raise
     finally:
         db.close()
 
 
 if __name__ == "__main__":
     init_db()
-
