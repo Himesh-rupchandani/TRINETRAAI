@@ -101,6 +101,9 @@ def init_db():
     logger.info("Initializing database tables...")
     Base.metadata.create_all(bind=engine)
     _auto_migrate(engine)
+        if not settings.DEMO_MODE:
+        logger.info("DEMO_MODE=false — skipping initial demo camera/watchlist seed.")
+        return
 
     # Seed default data if database is empty
     db = SessionLocal()
