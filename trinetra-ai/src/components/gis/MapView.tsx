@@ -14,7 +14,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Maximize, Minimize, Pause, Play, RotateCcw, X, ZoomIn, AlertTriangle } from 'lucide-react';
 import type { Camera, RoutePoint, VehicleEvent } from '@/types';
-import { config, type BasemapId } from '@/lib/config';
+import { config, mapboxEnabled, type BasemapId } from '@/lib/config';
 import { cn } from '@/lib/utils';
 import { useRoutePlayback } from '@/hooks/useRoutePlayback';
 import { cameraIcon, districtBubbleIcon, eventIcon, playbackIcon, routeIcon } from './mapIcons';
@@ -224,6 +224,13 @@ export interface MapViewProps {
   onSelectDistrict?: (name: string | null) => void;
 }
 
+function resolveBasemap(requested: BasemapId): BasemapId {
+  // If requested is a mapbox style but token invalid/missing, fall back to OSM street
+  if (requested.startsWith('mapbox') && !mapboxEnabled) return 'street';
+  if (!(requested in config.map.tiles)) return config.map.defaultBasemap;
+  return requested;
+}
+
 export function MapView({
   cameras = [],
   events = [],
@@ -247,14 +254,21 @@ export function MapView({
   selectedDistrict = null,
   onSelectDistrict,
 }: MapViewProps) {
-  const [basemap, setBasemap] = useState<BasemapId>(config.map.defaultBasemap);
+  const initialBasemap = useMemo(() => resolveBasemap(config.map.defaultBasemap), []);
+  const [basemap, setBasemap] = useState<BasemapId>(initialBasemap);
   const [mapZoom, setMapZoom] = useState(zoom);
-  const tiles = config.map.tiles[basemap];
+  const tiles = config.map.tiles[basemap] ?? config.map.tiles.street;
   const [fsMode, setFsMode] = useState<'native' | 'fake' | null>(null);
   const [fsPortalEl, setFsPortalEl] = useState<HTMLDivElement | null>(null);
   const fullscreen = fsMode != null;
   const rootRef = useRef<HTMLDivElement>(null);
   const playback = useRoutePlayback(route, onPlaybackStop);
+
+  // Auto-correct basemap if token becomes invalid or tiles missing
+  useEffect(() => {
+    const resolved = resolveBasemap(basemap);
+    if (resolved !== basemap) setBasemap(resolved);
+  }, [basemap]);
 
   const enterFake = useCallback(() => {
     try {
@@ -265,7 +279,6 @@ export function MapView({
       document.body.appendChild(el);
       setFsPortalEl(el);
       setFsMode('fake');
-      // Invalidate after portal mount
       setTimeout(() => {
         try {
           const mapEl = el.querySelector('.leaflet-container') as any;
@@ -402,7 +415,7 @@ export function MapView({
         center={center}
         zoom={zoom}
         maxZoom={20}
-        minZoom={5}
+        minZoom={3}
         scrollWheelZoom
         preferCanvas
         zoomControl
@@ -412,9 +425,10 @@ export function MapView({
         <TileLayer
           key={basemap}
           url={tiles.base}
-          attribution={config.map.attribution[basemap]}
+          attribution={config.map.attribution[basemap] ?? config.map.attribution.street}
           maxZoom={tiles.maxZoom ?? 19}
-          minZoom={5}
+          minZoom={tiles.minZoom ?? 3}
+          subdomains={tiles.subdomains ?? ['a', 'b', 'c']}
           errorTileUrl={ERROR_TILE}
           eventHandlers={{ tileerror: handleTileError }}
         />
@@ -422,7 +436,8 @@ export function MapView({
           <TileLayer
             url={tiles.labels}
             maxZoom={tiles.maxZoom ?? 19}
-            minZoom={5}
+            minZoom={tiles.minZoom ?? 3}
+            subdomains={tiles.subdomains ?? ['a', 'b', 'c']}
             errorTileUrl={ERROR_TILE}
             eventHandlers={{ tileerror: handleTileError }}
           />
@@ -558,7 +573,7 @@ export function MapView({
               key={b.id}
               type="button"
               onClick={() => {
-                setBasemap(b.id);
+                setBasemap(resolveBasemap(b.id));
                 setTileErrors(0);
               }}
               aria-pressed={basemap === b.id}
@@ -608,7 +623,7 @@ export function MapView({
             <div className="min-w-[120px]">
               <p className="whitespace-nowrap font-mono text-[10px] font-semibold text-ink">
                 {playback.started
-                  ? `Stop ${playback.stopIndex + 1} of ${validRoute.length} \\u00b7 ${validRoute[playback.stopIndex]?.cameraName ?? ''}`
+                  ? `Stop ${playback.stopIndex + 1} of ${validRoute.length} \u00b7 ${validRoute[playback.stopIndex]?.cameraName ?? ''}`
                   : `Replay ${validRoute.length} stops`}
               </p>
               <div className="mt-1 h-1 overflow-hidden rounded-full bg-slate-500/20">
