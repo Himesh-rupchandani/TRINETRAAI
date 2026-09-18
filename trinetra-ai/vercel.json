@@ -2,14 +2,17 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
-  "rewrites": [
+  "routes": [
     {
-      "source": "/sentinel/(.*)",
-      "destination": "/api/sentinel/$1"
+      "src": "/sentinel/(.*)",
+      "dest": "/api/sentinel/$1"
     },
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }
