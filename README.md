@@ -191,6 +191,26 @@ never stored in the DB, never returned by any API, never logged unredacted):
 
 ### Running the real Sentinel grid (start here on demo day)
 
+#### Vercel-only live camera mode
+
+If you must keep the submitted Vercel URL and only need the **30 live camera
+views** there, you can run the frontend in mock-data mode but switch camera
+playback to the real Sentinel gateway:
+
+```env
+VITE_USE_MOCKS=true
+VITE_MOCK_CAMERA_PLAYBACK=sentinel
+SENTINEL_EMAIL=your-approved-email
+SENTINEL_PASSWORD=your-access-password
+SENTINEL_WHEP_ORIGIN=http://103.250.160.189:8889
+SENTINEL_HLS_ORIGIN=http://103.250.160.189
+```
+
+This repo now ships a Vercel `/sentinel/*` proxy that injects the Sentinel
+Basic Auth server-side, so the submitted link can open the live feeds without
+exposing credentials in the browser bundle.
+
+
 The code is split into three processes; each needs the Sentinel credentials
 somewhere **server-side**. Put your registered email + access password in:
 

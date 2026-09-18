@@ -153,6 +153,21 @@ For a frontend-only/static deployment (for example Vercel), keep
 `VITE_MOCK_CAMERA_PLAYBACK=demo` so every camera stays playable without a
 server-side Sentinel proxy.
 
+To show the **real 30 Sentinel live cameras on the same Vercel link**, set:
+
+```dotenv
+VITE_USE_MOCKS=true
+VITE_MOCK_CAMERA_PLAYBACK=sentinel
+SENTINEL_EMAIL=your-approved-email
+SENTINEL_PASSWORD=your-access-password
+SENTINEL_WHEP_ORIGIN=http://103.250.160.189:8889
+SENTINEL_HLS_ORIGIN=http://103.250.160.189
+```
+
+The deployment now includes a Vercel serverless proxy at `/sentinel/*` which
+adds Basic Auth server-side and rewrites WHEP session `Location` headers back
+onto the same origin, so the browser never sees the credential.
+
 Going live:
 
 ```bash

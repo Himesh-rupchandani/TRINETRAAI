@@ -465,10 +465,13 @@ export function CameraPlayer({
                     className="btn-solid mx-auto"
                     onClick={requestStream}
                   >
-                    <Play size={15} aria-hidden /> {config.useMocks ? 'Watch demo video' : 'Watch live video'}
+                    <Play size={15} aria-hidden />
+                    {config.useMocks && config.mockCameraPlayback === 'demo'
+                      ? 'Watch demo video'
+                      : 'Watch live video'}
                   </button>
                   <p className="mt-2 text-2xs text-white/60">
-                    {config.useMocks
+                    {config.useMocks && config.mockCameraPlayback === 'demo'
                       ? 'This deployment uses recorded demo CCTV loops so every camera card stays playable.'
                       : decodable && rtcOk
                         ? 'Video only starts when you ask for it, so the network stays fast.'
