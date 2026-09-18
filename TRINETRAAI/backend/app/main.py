@@ -77,6 +77,16 @@ async def lifespan(app: FastAPI):
             sync_live_camera(db)
         except Exception as e:
             logger.error(f"Error syncing live camera source: {e}")
+        # Production helper: ensure the canonical 30 Sentinel camera rows exist
+        # on a fresh deployment, without seeding demo alerts/events/watchlist.
+        if settings.SEED_CAMERA_REGISTRY:
+            try:
+                from scripts.seed_demo import seed_cameras
+
+                logger.info("Seeding canonical 30-camera registry (no demo events)...")
+                seed_cameras(db)
+            except Exception as e:
+                logger.error(f"Error seeding live camera registry: {e}")
         cameras = db.query(Camera).all()
         logger.info(f"Registering {len(cameras)} CCTV cameras into CameraManager...")
         for cam in cameras:

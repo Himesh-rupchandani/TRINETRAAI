@@ -70,6 +70,9 @@ class Settings(BaseSettings):
 
     # Demo Mode
     DEMO_MODE: bool = True
+    # Seed the canonical 30-camera live registry at backend startup. This only
+    # ensures camera rows exist; it does NOT create demo events/watchlist.
+    SEED_CAMERA_REGISTRY: bool = False
     # Start stream ingestion for every registered camera at boot? Off by
     # default: a control room opens the streams it is actually looking at
     # (POST /cameras/{id}/start). Set true to ingest the whole grid.

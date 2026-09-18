@@ -4,6 +4,10 @@
   "framework": "vite",
   "rewrites": [
     {
+      "source": "/sentinel/(.*)",
+      "destination": "/api/sentinel/$1"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

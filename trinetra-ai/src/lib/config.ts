@@ -84,6 +84,14 @@ export const config = {
    */
   streamBasePath: env.VITE_STREAM_BASE_PATH ?? '/sentinel/stream',
   liveStreams: (env.VITE_LIVE_STREAMS ?? 'true') !== 'false',
+  /**
+   * In mock mode, static deployments (e.g. Vercel) have no server-side
+   * Sentinel proxy, so the safe default is an in-bundle demo loop. Set to
+   * `sentinel` only when a same-origin /sentinel proxy exists.
+   */
+  mockCameraPlayback: ((env.VITE_MOCK_CAMERA_PLAYBACK ?? 'demo').trim().toLowerCase() === 'sentinel'
+    ? 'sentinel'
+    : 'demo') as 'demo' | 'sentinel',
   autoLogin: (env.VITE_AUTO_LOGIN ?? 'true') !== 'false',
   // Default live camera to auto-show on dashboard when website runs
   defaultLiveCameraId: (env.VITE_DEFAULT_LIVE_CAMERA ?? 'cam04') as string,

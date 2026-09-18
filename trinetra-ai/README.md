@@ -140,13 +140,52 @@ dateTo, timeFrom, timeTo, watchlistOnly, page, pageSize`.
 `.env` (see `.env.example`) — **browser-safe values only**:
 
 ```dotenv
-VITE_USE_MOCKS=true          # false → use the real backend
-VITE_API_BASE_URL=/api       # same-origin proxy recommended
-VITE_REALTIME_TRANSPORT=sse  # sse | ws | off
+VITE_USE_MOCKS=true                 # false → use the real backend
+VITE_API_BASE_URL=/api              # same-origin proxy recommended
+VITE_REALTIME_TRANSPORT=sse         # sse | ws | off
+VITE_MOCK_CAMERA_PLAYBACK=demo      # demo | sentinel
 VITE_MAP_CENTER_LAT=23.0225
 VITE_MAP_CENTER_LNG=72.5714
 VITE_MAP_DEFAULT_ZOOM=13
 ```
+
+For a frontend-only/static deployment (for example Vercel), keep
+`VITE_MOCK_CAMERA_PLAYBACK=demo` so every camera stays playable without a
+server-side Sentinel proxy.
+
+To show the **real 30 Sentinel live cameras on the same Vercel link**, set:
+
+```dotenv
+VITE_USE_MOCKS=true
+VITE_MOCK_CAMERA_PLAYBACK=sentinel
+SENTINEL_EMAIL=your-approved-email
+SENTINEL_PASSWORD=your-access-password
+SENTINEL_WHEP_ORIGIN=http://103.250.160.189:8889
+SENTINEL_HLS_ORIGIN=http://103.250.160.189
+```
+
+The deployment now includes a Vercel serverless proxy at `/sentinel/*` which
+adds Basic Auth server-side and rewrites WHEP session `Location` headers back
+onto the same origin, so the browser never sees the credential.
+
+If you have a **full live backend API**, set pure live mode like this:
+
+```dotenv
+VITE_USE_MOCKS=false
+BACKEND_ORIGIN=https://your-live-backend.example.com
+VITE_REALTIME_TRANSPORT=sse
+SENTINEL_EMAIL=your-approved-email
+SENTINEL_PASSWORD=your-access-password
+SENTINEL_WHEP_ORIGIN=http://103.250.160.189:8889
+SENTINEL_HLS_ORIGIN=http://103.250.160.189
+```
+
+This Vercel deployment now proxies:
+
+- `/api/*` -> your live backend
+- `/sentinel/*` -> Sentinel media gateway
+
+So the same public URL can run in **backend-only live mode** without any mock camera data.
 
 Going live:
 
