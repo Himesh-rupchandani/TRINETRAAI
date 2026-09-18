@@ -210,6 +210,26 @@ This repo now ships a Vercel `/sentinel/*` proxy that injects the Sentinel
 Basic Auth server-side, so the submitted link can open the live feeds without
 exposing credentials in the browser bundle.
 
+#### Vercel full live API mode
+
+If you already have the **real backend API deployed**, the same submitted
+Vercel link can now proxy all `/api/*` requests to it and still keep Sentinel
+playback on the same domain:
+
+```env
+VITE_USE_MOCKS=false
+BACKEND_ORIGIN=https://your-live-backend.example.com
+VITE_REALTIME_TRANSPORT=sse
+SENTINEL_EMAIL=your-approved-email
+SENTINEL_PASSWORD=your-access-password
+SENTINEL_WHEP_ORIGIN=http://103.250.160.189:8889
+SENTINEL_HLS_ORIGIN=http://103.250.160.189
+```
+
+- `/api/*` -> your live backend via Vercel serverless proxy
+- `/sentinel/*` -> Sentinel WHEP/HLS proxy with server-side auth
+- Browser stays on the same public Vercel URL; no credentials in the bundle
+
 
 The code is split into three processes; each needs the Sentinel credentials
 somewhere **server-side**. Put your registered email + access password in:
