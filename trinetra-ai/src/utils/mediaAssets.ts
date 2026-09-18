@@ -44,7 +44,16 @@ const SCENES = [
   '/cctv/cctv-04.jpg',
   '/cctv/cctv-05.jpg',
   '/cctv/cctv-06.jpg',
-];
+] as const;
+
+const LOOPS = [
+  '/cctv/loops/cctv-loop-01.gif',
+  '/cctv/loops/cctv-loop-02.gif',
+  '/cctv/loops/cctv-loop-03.gif',
+  '/cctv/loops/cctv-loop-04.gif',
+  '/cctv/loops/cctv-loop-05.gif',
+  '/cctv/loops/cctv-loop-06.gif',
+] as const;
 
 function hash(str: string): number {
   let h = 2166136261;
@@ -52,9 +61,18 @@ function hash(str: string): number {
   return Math.abs(h);
 }
 
+function mediaIndex(cameraId: string, size: number): number {
+  return hash(cameraId.toLowerCase()) % size;
+}
+
 /** Stable, realistic CCTV preview image for a camera (demo mode). */
 export function cameraStill(cameraId: string): string {
-  return SCENES[hash(cameraId.toLowerCase()) % SCENES.length];
+  return SCENES[mediaIndex(cameraId, SCENES.length)];
+}
+
+/** Stable animated demo loop for a camera (works on static hosting too). */
+export function cameraLoop(cameraId: string): string {
+  return LOOPS[mediaIndex(cameraId, LOOPS.length)];
 }
 
 const VEHICLES: Record<VehicleClass, string> = {

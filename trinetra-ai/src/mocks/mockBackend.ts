@@ -30,7 +30,7 @@ import { buildMockHealth } from './health';
 import { haversineKm, minutesBetween, normalisePlate, sleep } from '@/lib/utils';
 import { config } from '@/lib/config';
 import { syntheticPoster } from '@/utils/syntheticEvidence';
-import { cameraStill } from '@/utils/mediaAssets';
+import { cameraLoop, cameraStill } from '@/utils/mediaAssets';
 
 /* ------------------------------ mutable store ------------------------------ */
 
@@ -101,22 +101,22 @@ export async function getCamera(id: string): Promise<Camera> {
 /**
  * Issues the playback ticket for a camera.
  *
- * Even in mock mode the *video is real*: the ticket points at the same-origin
- * WHEP signalling path, which a server-side proxy forwards to the Sentinel
- * media gateway. RTSP cannot be played by a browser and the HLS host sits
- * behind the Sentinel access password, so WebRTC is the correct browser
- * transport. No password, key or token is ever handed to the client.
- *
- * Set VITE_LIVE_STREAMS=false to fall back to synthetic demo frames.
+ * Mock-mode deployments are often frontend-only (for example a static Vercel
+ * link), so there may be no same-origin Sentinel proxy available. The safe
+ * default is therefore an in-bundle animated demo loop that always plays.
+ * When a real /sentinel proxy does exist, set VITE_MOCK_CAMERA_PLAYBACK=sentinel
+ * to opt back into the live WHEP path.
  */
 export async function getCameraStream(id: string): Promise<CameraStreamTicket> {
   await latency(160);
   const cam = await getCamera(id);
-  const live = config.liveStreams && cam.status !== 'OFFLINE';
+  const wantsSentinelGateway =
+    config.mockCameraPlayback === 'sentinel' && config.liveStreams && cam.status !== 'OFFLINE';
+
   return {
     cameraId: cam.id,
-    streamType: live ? 'WEBRTC' : (cam.streamType ?? 'HLS'),
-    streamUrl: live ? `${config.streamBasePath}/${cam.id}/whep` : '',
+    streamType: wantsSentinelGateway ? 'WEBRTC' : 'MJPEG',
+    streamUrl: wantsSentinelGateway ? `${config.streamBasePath}/${cam.id}/whep` : cameraLoop(cam.id),
     expiresAt: new Date(Date.now() + 5 * 60_000).toISOString(),
     poster: cam.status === 'OFFLINE' ? syntheticPoster(cam.name, cam.status) : cameraStill(cam.id),
   };

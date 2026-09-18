@@ -140,13 +140,18 @@ dateTo, timeFrom, timeTo, watchlistOnly, page, pageSize`.
 `.env` (see `.env.example`) — **browser-safe values only**:
 
 ```dotenv
-VITE_USE_MOCKS=true          # false → use the real backend
-VITE_API_BASE_URL=/api       # same-origin proxy recommended
-VITE_REALTIME_TRANSPORT=sse  # sse | ws | off
+VITE_USE_MOCKS=true                 # false → use the real backend
+VITE_API_BASE_URL=/api              # same-origin proxy recommended
+VITE_REALTIME_TRANSPORT=sse         # sse | ws | off
+VITE_MOCK_CAMERA_PLAYBACK=demo      # demo | sentinel
 VITE_MAP_CENTER_LAT=23.0225
 VITE_MAP_CENTER_LNG=72.5714
 VITE_MAP_DEFAULT_ZOOM=13
 ```
+
+For a frontend-only/static deployment (for example Vercel), keep
+`VITE_MOCK_CAMERA_PLAYBACK=demo` so every camera stays playable without a
+server-side Sentinel proxy.
 
 Going live:
 

@@ -70,6 +70,7 @@ export function CameraPlayer({
   const [detectionFailed, setDetectionFailed] = useState(false);
   const detectionActive = aiBoxes && !detectionFailed && Boolean(ticket?.detectionUrl);
   const useImg = isMjpeg || detectionActive;
+  const demoLoop = config.useMocks && isMjpeg && !detectionActive;
 
   // The MJPEG views (file feed / AI detection view) can also serve an honest
   // "NO SIGNAL" placeholder when the camera source is unreachable from this
@@ -158,7 +159,12 @@ export function CameraPlayer({
       setMjpegSrc(ticket.detectionUrl);
       return;
     }
-    setMjpegSrc(isMjpeg ? (ticket?.streamUrl || `/cvfeed/${camera.id}`) : null);
+    setMjpegSrc(isMjpeg ? `/cvfeed/${camera.id}` : null);
+    if (isMjpeg && ticket?.streamUrl) {
+      // Mock/static builds can point straight at an in-bundle demo loop, while
+      // live backends may still prefer their own explicit MJPEG mirror.
+      setMjpegSrc(ticket.streamUrl);
+    }
     // `isMjpeg` (i.e. ticket.streamType) MUST be a dependency: the body reads
     // it, and it is also what flips the player into <img> mode. Omitting it let
     // a ticket that changed transport (e.g. an MJPEG fallback issued for the
@@ -298,6 +304,11 @@ export function CameraPlayer({
             {(phase === 'LIVE' || (detectionActive && mjpegAlive && mjpegSignal)) && (
               <span className="chip border-critical/60 bg-critical/25 text-white">
                 <CircleDot size={9} className="animate-pulse" aria-hidden /> LIVE
+              </span>
+            )}
+            {demoLoop && mjpegAlive && (
+              <span className="chip border-white/30 bg-black/35 text-white">
+                <CircleDot size={9} aria-hidden /> DEMO VIDEO
               </span>
             )}
             {detectionActive && mjpegAlive && mjpegSignal && (
@@ -454,12 +465,14 @@ export function CameraPlayer({
                     className="btn-solid mx-auto"
                     onClick={requestStream}
                   >
-                    <Play size={15} aria-hidden /> Watch live video
+                    <Play size={15} aria-hidden /> {config.useMocks ? 'Watch demo video' : 'Watch live video'}
                   </button>
                   <p className="mt-2 text-2xs text-white/60">
-                    {decodable && rtcOk
-                      ? 'Video only starts when you ask for it, so the network stays fast.'
-                      : 'Your browser will use the compatibility stream for this camera.'}
+                    {config.useMocks
+                      ? 'This deployment uses recorded demo CCTV loops so every camera card stays playable.'
+                      : decodable && rtcOk
+                        ? 'Video only starts when you ask for it, so the network stays fast.'
+                        : 'Your browser will use the compatibility stream for this camera.'}
                   </p>
                 </>
               )}
@@ -478,19 +491,23 @@ export function CameraPlayer({
                   <span
                     className={cn(
                       'h-2 w-2 rounded-full',
-                      useImg && !mjpegSignal
-                        ? 'bg-degraded'
-                        : quality === 'Good'
-                          ? 'bg-online'
-                          : 'bg-degraded',
+                      demoLoop
+                        ? 'bg-brand'
+                        : useImg && !mjpegSignal
+                          ? 'bg-degraded'
+                          : quality === 'Good'
+                            ? 'bg-online'
+                            : 'bg-degraded',
                     )}
                     aria-hidden
                   />
-                  {useImg && !mjpegSignal
-                    ? 'No live signal — source unreachable from this network'
-                    : quality === 'Good'
-                      ? 'Video is clear'
-                      : 'Video quality is poor'}
+                  {demoLoop
+                    ? 'Recorded demo footage is playing'
+                    : useImg && !mjpegSignal
+                      ? 'No live signal — source unreachable from this network'
+                      : quality === 'Good'
+                        ? 'Video is clear'
+                        : 'Video quality is poor'}
                 </span>
               ) : (
                 <span>Connecting…</span>
