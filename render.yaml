@@ -1,0 +1,43 @@
+services:
+  - type: web
+    name: trinetra-backend
+    env: docker
+    rootDir: TRINETRAAI/backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DEBUG
+        value: false
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 8000
+      - key: DEMO_MODE
+        value: false
+      - key: AUTO_START_CAMERAS
+        value: false
+      - key: VEHICLE_DETECTION_ENABLED
+        value: false
+      - key: SEED_CAMERA_REGISTRY
+        value: true
+      - key: DATABASE_URL
+        value: sqlite:///./trinetra.db
+      - key: UPLOAD_DIR
+        value: uploads
+      - key: EVIDENCE_ROOT
+        value: data/evidence
+      - key: SENTINEL_CATALOGUE_URL
+        value: https://cctv.corp8.cloud/cameras.json
+      - key: SENTINEL_HLS_BASE_URL
+        value: https://cctv.corp8.cloud
+      - key: SENTINEL_RTSP_HOST
+        value: 103.250.160.189
+      - key: SENTINEL_RTSP_PORT
+        value: 8554
+      - key: SENTINEL_EMAIL
+        sync: false
+      - key: SENTINEL_PASSWORD
+        sync: false
